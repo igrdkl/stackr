@@ -160,7 +160,8 @@ fully offline, native footprint — without containers or virtualization.
 - **In-app auto-update** (signed) — Stackr checks for a newer release on launch
   and offers a one-click **Download & install** in Settings → Updates, then
   relaunches. Updates are cryptographically verified against a bundled public key.
-- See [`RELEASING.md`](RELEASING.md) for how releases are built and signed.
+- See [`RELEASING.md`](RELEASING.md) for how releases are built and signed, and the
+  [`Code Signing Policy`](SIGNING-POLICY.md) for who signs them and how.
 
 ### Desktop integration
 - Custom **frameless title bar** with native min / maximize / close controls
