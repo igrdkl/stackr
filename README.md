@@ -15,6 +15,19 @@ Built on **Tauri 2 (Rust)** + **React 19 + TypeScript + Vite** + **Tailwind CSS 
 
 ---
 
+## Download
+
+Get the latest Windows installer from the
+**[Releases page](https://github.com/igrdkl/stackr/releases)**
+(`Stackr_x.y.z_x64-setup.exe`); Stackr auto-updates itself from then on.
+
+Windows builds are code-signed with a certificate provided by the
+[**SignPath Foundation**](https://signpath.org) — free code signing for
+open-source projects, via [SignPath.io](https://signpath.io). See the
+[Code Signing Policy](SIGNING-POLICY.md) for details.
+
+---
+
 ## What it's for
 
 A fast, offline, native control panel for PHP development on Windows. Stackr lets

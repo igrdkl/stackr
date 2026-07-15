@@ -51,6 +51,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Stackr ${{ github.ref_name }}
-          releaseBody: Download the installer below. Existing installs update automatically.
+          releaseBody: Download the installer below. Existing installs update automatically. Windows builds are code-signed with a certificate provided by the SignPath Foundation.
           releaseDraft: false
           prerelease: false
