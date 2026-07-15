@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a89ff"></stop><stop offset="1" stop-color="#3f6ff0"></stop></linearGradient></defs>
+  <rect width="48" height="48" rx="11" fill="url(#bg)"></rect>
+  <polygon points="24,11 35,17.5 35,30.5 24,37 13,30.5 13,17.5" fill="#ffffff"></polygon>
+  <polyline points="21.5,21 26.5,25 21.5,29" stroke="#4f7fff" stroke-width="2.6"></polyline>
+</svg>

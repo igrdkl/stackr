@@ -1,0 +1,47 @@
+name: ci
+
+# Verifies Stackr builds and its tests pass on both Windows generations:
+#   - windows-2019  → Windows 10 / Server 2019 era SDK & toolchain
+#   - windows-2022  → Windows 11 / Server 2022 era SDK & toolchain
+# This catches platform-specific build breaks (webview2-com, winreg, the windows
+# crate, job objects) across the OS versions Stackr targets. Runtime behaviour
+# (WebView2, launching bundled engines) still needs the manual VM smoke test.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: build & test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2019, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type-check + build frontend
+        run: npm run build
+
+      - name: Rust unit tests (network/live tests are #[ignore] and skipped)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      - name: Compile release binary
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release

@@ -1,0 +1,76 @@
+name: release
+
+# Build a signed Windows installer in this (private) repo, then publish it +
+# a generated latest.json to the PUBLIC stackr-manifest repo's Releases. The
+# in-app updater fetches (unauthenticated):
+#   https://github.com/igrdkl/stackr-manifest/releases/latest/download/latest.json
+# so the artifacts MUST live in the public repo — a private repo's release
+# assets aren't reachable without a token, which a distributed app can't carry.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           contents of the updater private key file
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password (empty string if none)
+#   MANIFEST_RELEASE_TOKEN              PAT with contents:write on stackr-manifest
+#
+# Release flow: bump the version, tag `vX.Y.Z`, push the tag. This publishes a
+# release on stackr-manifest with the installer + latest.json.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MANIFEST_REPO: igrdkl/stackr-manifest
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        run: npm ci
+
+      # Build + sign only (no release created here — omitting tagName makes
+      # tauri-action build and expose the artifact paths).
+      - name: Build & sign
+        uses: tauri-apps/tauri-action@v0
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      # Assemble latest.json (pointing at the public repo's asset) and publish
+      # the installer + latest.json to stackr-manifest's Releases.
+      - name: Publish to stackr-manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MANIFEST_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd src-tauri/target/release/bundle/nsis
+          exe=$(ls *-setup.exe)
+          sig=$(cat *-setup.exe.sig)
+          version="${GITHUB_REF_NAME#v}"
+          url="https://github.com/${MANIFEST_REPO}/releases/download/${GITHUB_REF_NAME}/${exe// /.}"
+          jq -n \
+            --arg v "$version" \
+            --arg sig "$sig" \
+            --arg url "$url" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version:$v, notes:("Stackr " + $v), pub_date:$date, platforms:{"windows-x86_64":{signature:$sig, url:$url}}}' \
+            > latest.json
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$MANIFEST_REPO" \
+            --title "Stackr $GITHUB_REF_NAME" \
+            --notes "Download the installer below. Existing installs update automatically." \
+            "$exe" latest.json

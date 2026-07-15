@@ -1,0 +1,66 @@
+/* UI font — Geist (400/500/600/700) */
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+/* Mono font — JetBrains Mono (400/500/600) */
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: #0f1117;
+    color: #e6e8ee;
+    font-family: 'Geist Sans', Geist, -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* Native-app feel: UI chrome isn't selectable like a web page. Selection is
+       re-enabled below (and via `select-text`) where copying text is useful. */
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  /* Editable fields and opt-in content areas stay selectable. */
+  input,
+  textarea,
+  [contenteditable=''],
+  [contenteditable='true'],
+  .select-text {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  input,
+  textarea {
+    cursor: text;
+  }
+}
+
+/* Scrollbars (match prototype) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #262b36;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333a47;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
