@@ -1,8 +1,9 @@
 name: ci
 
-# Verifies Stackr builds and its tests pass on both Windows generations:
-#   - windows-2019  → Windows 10 / Server 2019 era SDK & toolchain
-#   - windows-2022  → Windows 11 / Server 2022 era SDK & toolchain
+# Verifies Stackr builds and its tests pass across GitHub's current hosted
+# Windows runners (windows-2019 was retired by GitHub, so it's dropped):
+#   - windows-2022   → Windows 11 / Server 2022 era SDK & toolchain
+#   - windows-latest → newest hosted Windows image
 # This catches platform-specific build breaks (webview2-com, winreg, the windows
 # crate, job objects) across the OS versions Stackr targets. Runtime behaviour
 # (WebView2, launching bundled engines) still needs the manual VM smoke test.
@@ -18,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019, windows-2022]
+        os: [windows-2022, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

@@ -301,5 +301,5 @@ src-tauri/
 └── tauri.conf.json
 ```
 
-The high-fidelity UI matches the designs in [`DESIGN/`](DESIGN/) 1:1 (dark theme).
-See [`STATUS.md`](STATUS.md) for the detailed build status and design notes.
+The UI is a hand-built, high-fidelity dark theme. See [`ARCHITECTURE.md`](ARCHITECTURE.md)
+for a tour of the backend internals and the design rationale.
