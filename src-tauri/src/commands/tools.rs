@@ -10,6 +10,31 @@ use crate::state::StateStore;
 const ADMINER_URL: &str = "https://www.adminer.org/latest.php";
 const ADMINER_DOMAIN: &str = "adminer.test";
 
+/// Auto-login wrapper served as Adminer's `index.php`. Adminer refuses an empty
+/// password on its login form, which collides with Stackr's passwordless loopback
+/// root — so we skip the form and connect directly. PostgreSQL uses the `postgres`
+/// superuser; MySQL/MariaDB use `root`. All are passwordless — loopback binding is
+/// the security boundary. Switch engines via the URL (`?pgsql=127.0.0.1`).
+// Note: Adminer resolves the hook via `function_exists('adminer_object')`, which
+// checks the GLOBAL namespace — so this function must NOT be namespaced, even
+// though the base class is `\Adminer\Adminer`. `login()` + `permanentLogin()`
+// together lift Adminer's refusal of an empty password.
+const ADMINER_AUTOLOGIN: &str = r#"<?php
+function adminer_object() {
+    class StackrAutoLogin extends \Adminer\Adminer {
+        function credentials() {
+            $user = (defined('Adminer\\DRIVER') && \Adminer\DRIVER === 'pgsql') ? 'postgres' : 'root';
+            return ['127.0.0.1', $user, ''];
+        }
+        function login($login, $password) { return true; }
+        function permanentLogin($create = false) { return 'stackr-local-dev'; }
+    }
+    return new StackrAutoLogin;
+}
+
+include './adminer.php';
+"#;
+
 /// Download Adminer if needed, serve it at `http://adminer.test` via the active
 /// web server (Nginx or Apache) + PHP, register the host, and open it in the
 /// browser. Adminer is just a PHP file, so it's web-server-agnostic — it's served
@@ -36,12 +61,15 @@ pub async fn open_adminer(
     };
     let server = server_id.split('-').next().unwrap_or("nginx").to_string();
 
-    // Fetch Adminer once, as the web root's index.php.
+    // Fetch Adminer once as `adminer.php`, and serve it through an auto-login
+    // `index.php` wrapper (Adminer's own form rejects the empty password that
+    // Stackr's passwordless loopback root uses).
     let dir = crate::paths::adminer_dir();
-    let index = dir.join("index.php");
-    if !index.exists() {
-        crate::download::download_file(ADMINER_URL, &index).await?;
+    let adminer = dir.join("adminer.php");
+    if !adminer.exists() {
+        crate::download::download_file(ADMINER_URL, &adminer).await?;
     }
+    std::fs::write(dir.join("index.php"), ADMINER_AUTOLOGIN).map_err(|e| e.to_string())?;
 
     // Bring up PHP on its FastCGI port, write Adminer's vhost for the active
     // server, then start it (or reload if already up) so the vhost is applied.
