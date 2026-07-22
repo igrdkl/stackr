@@ -273,9 +273,91 @@ pub fn clone_git(git: &str, url: &str, dest: &Path) -> Result<(), String> {
     )
 }
 
+/// Point a Laravel project's `.env` at a Stackr-managed database. Laravel's
+/// default `.env` uses `DB_CONNECTION=sqlite` with the other `DB_*` lines
+/// commented out, so a project created (or switched) to MySQL/MariaDB/PostgreSQL
+/// would otherwise ignore the schema Stackr creates. `kind` is the engine family
+/// from `db_engine_kind` (`"mysql"` or `"postgresql"`); credentials match Stackr's
+/// passwordless loopback root. No-op when the project has no `.env`.
+pub fn configure_laravel_env_db(project_dir: &Path, kind: &str, db_name: &str) -> Result<(), String> {
+    let env = project_dir.join(".env");
+    if !env.exists() {
+        return Ok(());
+    }
+    let mut content = std::fs::read_to_string(&env).map_err(|e| e.to_string())?;
+    let (conn, port, user) = match kind {
+        "postgresql" => ("pgsql", "5432", "postgres"),
+        _ => ("mysql", "3306", "root"),
+    };
+    for (key, val) in [
+        ("DB_CONNECTION", conn),
+        ("DB_HOST", "127.0.0.1"),
+        ("DB_PORT", port),
+        ("DB_DATABASE", db_name),
+        ("DB_USERNAME", user),
+        ("DB_PASSWORD", ""),
+    ] {
+        content = set_env_kv(&content, key, val);
+    }
+    std::fs::write(&env, content).map_err(|e| e.to_string())
+}
+
+/// Set `KEY=value` in a dotenv string: rewrite the first line that assigns `key`
+/// (even a commented one, so Laravel's commented `DB_*` lines get uncommented),
+/// else append it. Other lines and a trailing newline are preserved.
+fn set_env_kv(content: &str, key: &str, value: &str) -> String {
+    let prefix = format!("{key}=");
+    let mut replaced = false;
+    let mut out: Vec<String> = Vec::new();
+    for line in content.lines() {
+        let body = line.trim_start();
+        let body = body.strip_prefix('#').map(str::trim_start).unwrap_or(body);
+        if !replaced && body.starts_with(&prefix) {
+            out.push(format!("{key}={value}"));
+            replaced = true;
+        } else {
+            out.push(line.to_string());
+        }
+    }
+    if !replaced {
+        out.push(format!("{key}={value}"));
+    }
+    let mut result = out.join("\n");
+    if content.ends_with('\n') {
+        result.push('\n');
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn env_kv_rewrites_uncomments_and_appends() {
+        // Mirrors Laravel 11's default .env: sqlite active, DB_* commented out.
+        let src = "APP_NAME=Laravel\nDB_CONNECTION=sqlite\n# DB_HOST=127.0.0.1\n# DB_PORT=3306\n# DB_DATABASE=laravel\n# DB_USERNAME=root\n# DB_PASSWORD=\nMAIL_MAILER=log\n";
+        let mut c = src.to_string();
+        for (k, v) in [
+            ("DB_CONNECTION", "mysql"),
+            ("DB_HOST", "127.0.0.1"),
+            ("DB_PORT", "3306"),
+            ("DB_DATABASE", "my_shop"),
+            ("DB_USERNAME", "root"),
+            ("DB_PASSWORD", ""),
+        ] {
+            c = set_env_kv(&c, k, v);
+        }
+        assert!(c.contains("\nDB_CONNECTION=mysql\n"), "connection set to mysql");
+        assert!(c.contains("\nDB_DATABASE=my_shop\n"), "database name applied");
+        assert!(c.contains("\nDB_PASSWORD=\n"), "empty password line present");
+        assert!(!c.contains("sqlite"), "sqlite replaced");
+        assert!(!c.contains("# DB_HOST"), "DB_HOST uncommented");
+        assert!(c.contains("APP_NAME=Laravel") && c.contains("MAIL_MAILER=log"), "other keys untouched");
+        // Missing key gets appended.
+        let appended = set_env_kv("FOO=1\n", "DB_DATABASE", "x");
+        assert!(appended.contains("DB_DATABASE=x"));
+    }
 
     #[test]
     fn doc_roots_match_frameworks() {

@@ -776,6 +776,12 @@ pub async fn create_project(
                 let _ = services::ensure_stopped(&app, &reg, &id);
             }
             create?;
+
+            // Point a Laravel project's .env at the schema we just created —
+            // Laravel defaults to sqlite, so otherwise the new database goes unused.
+            if framework.as_deref() == Some("Laravel") {
+                let _ = crate::scaffold::configure_laravel_env_db(&path, kind, &db_name);
+            }
         }
     }
 
@@ -947,6 +953,15 @@ pub async fn set_project_db(
             let _ = services::ensure_stopped(&app, &reg, &svc_id);
         }
         create?;
+
+        // Keep a Laravel project's .env in sync with the newly-selected database.
+        if project.framework.as_deref() == Some("Laravel") {
+            let _ = crate::scaffold::configure_laravel_env_db(
+                std::path::Path::new(&project.path),
+                kind,
+                &db_name,
+            );
+        }
     }
     Ok(())
 }
